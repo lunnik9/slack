@@ -276,17 +276,18 @@ func (api *Client) GetFilesContext(ctx context.Context, params GetFilesParameter
 }
 
 // UploadFile uploads a file
-func (api *Client) UploadFile(params FileUploadParameters) (file *File, err error) {
-	return api.UploadFileContext(context.Background(), params)
+func (api *Client) UploadFile(params FileUploadParameters) (ts string, err error) {
+	ts, err = api.UploadFileContext(context.Background(), params)
+	return ts, err
 }
 
 // UploadFileContext uploads a file and setting a custom context
-func (api *Client) UploadFileContext(ctx context.Context, params FileUploadParameters) (file *File, err error) {
+func (api *Client) UploadFileContext(ctx context.Context, params FileUploadParameters) (ts string, err error) {
 	// Test if user token is valid. This helps because client.Do doesn't like this for some reason. XXX: More
 	// investigation needed, but for now this will do.
 	_, err = api.AuthTest()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	response := &fileResponseFull{}
 	values := url.Values{
@@ -317,16 +318,16 @@ func (api *Client) UploadFileContext(ctx context.Context, params FileUploadParam
 		err = postLocalWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.upload", params.File, "file", values, response, api)
 	} else if params.Reader != nil {
 		if params.Filename == "" {
-			return nil, fmt.Errorf("files.upload: FileUploadParameters.Filename is mandatory when using FileUploadParameters.Reader")
+			return "", fmt.Errorf("files.upload: FileUploadParameters.Filename is mandatory when using FileUploadParameters.Reader")
 		}
 		err = postWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.upload", params.Filename, "file", values, params.Reader, response, api)
 	}
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &response.File, response.Err()
+	return params.ThreadTimestamp, response.Err()
 }
 
 // DeleteFileComment deletes a file's comment
